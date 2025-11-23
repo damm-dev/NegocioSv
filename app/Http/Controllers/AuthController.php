@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Negocio;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'nombreNegocio' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
+            'email' => 'required|string|email|max:255|unique:negocio,email',
             'password' => 'required|string|min:8',
             'productos'=> 'nullable|string',
             'direccion' => 'required|string|max:500',
@@ -53,9 +54,9 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'nombres' => 'required|string|max:255',
             'apellidos' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:negocios,email',
+            'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
-            'photo' => 'nullable|image|mimes:jpg,jpeg,pgn|max:2048',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'ciudad' => 'nullable|string|max:255',
             'municipio' => 'nullable|string|max:255',
             'departamento' => 'nullable|string|max:255',
@@ -72,9 +73,9 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'foto_perfil_path' => $request->photo,
-            'ciudad' => $request->city,
-            'municipio' => $request->municipality,
-            'departamento' => $request->department,
+            'ciudad' => $request->ciudad,
+            'municipio' => $request->municipio,
+            'departamento' => $request->departamento,
             'notificaciones' => $request->notifications ?? false,
         ]);
 
@@ -93,11 +94,21 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Credenciales inválidas'], 401);
+        //respuesta para el usuario
+        if ($user && Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Inicio de sesión existoso',
+            'type' => 'user',
+            'data' => $user], 200);
         }
 
-        return response()->json(['message' => 'Inicio de sesión exitoso', 'user' => $user], 200);
+        //respuesta para el negocio
+        $negocio = Negocio::where('email', $request->email)->first();
+        if ($negocio && Hash::check($request->password, $negocio->password)) {
+            return response()->json(['message' => 'Inicio de sesión exitoso',
+            'type' => 'negocio',
+            'data' => $negocio], 200);
+        }
+        return response()->json(['message' => 'Credenciales inválidas'], 401);
+
     }
 }

@@ -15,9 +15,12 @@ class AuthController extends Controller
 
     function registerBusiness(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Obtener datos del request - usar json() para requests JSON
+        $data = $request->isJson() ? $request->json()->all() : $request->all();
+        
+        $validator = Validator::make($data, [
             'nombreNegocio' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:negocio,email',
+            'email' => 'required|string|email|max:255|unique:negocios,email',
             'password' => 'required|string|min:8',
             'productos'=> 'nullable|string',
             'direccion' => 'required|string|max:500',
@@ -33,16 +36,16 @@ class AuthController extends Controller
         }
 
         $business = DB::table('negocios')->insert([
-            'nombreNegocio' => $request->nombreNegocio,
-            'email' => $request->email,
-            'direccion' => $request->direccion,
-            'productos' => $request->productos,
-            'metodosPago' => json_encode($request->metodosPago),
-            'telefono' => $request->telefono,
-            'categoria_id' => $request->categoria,
-            'foto' => $request->foto,
-            'descripcion' => $request->descripcion,
-            'password' => Hash::make($request->password),
+            'nombreNegocio' => $data['nombreNegocio'],
+            'email' => $data['email'],
+            'direccion' => $data['direccion'],
+            'productos' => $data['productos'] ?? null,
+            'metodosPago' => json_encode($data['metodosPago']),
+            'telefono' => $data['telefono'] ?? null,
+            'categoria_id' => $data['categoria'] ?? null,
+            'foto' => $data['foto'] ?? null,
+            'descripcion' => $data['descripcion'],
+            'password' => Hash::make($data['password']),
             'created_at' => Carbon::now(),
             'updated_at' => Carbon::now(),
         ]);

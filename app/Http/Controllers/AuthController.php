@@ -17,12 +17,14 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'nombreNegocio' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:8',
             'productos'=> 'nullable|string',
             'direccion' => 'required|string|max:500',
             'metodosPago' => 'required|array',
             'foto' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'telefono' => 'nullable|string|max:20',
             'categoria' => 'nullable|exists:categorias,id',
+            'descripcion' => 'required|string|max:1000',
         ]);
 
         if ($validator->fails()) {
@@ -38,6 +40,8 @@ class AuthController extends Controller
             'telefono' => $request->telefono,
             'categoria_id' => $request->categoria,
             'foto' => $request->foto,
+            'descripcion' => $request->descripcion,
+            'password' => Hash::make($request->password),
             'created_at' => Carbon::now(),
             'updated_at' => Carbon::now(),
         ]);

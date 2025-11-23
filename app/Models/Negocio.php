@@ -16,15 +16,21 @@ class Negocio extends Model
     protected $fillable = [
         'nombreNegocio',
         'email',
+        'password',
         'productos',
         'direccion',
         'metodosPago',
         'categoria',
         'telefono',
         'foto',
+        'descripcion'
     ];
 
     protected $casts = [
         'metodosPago' => 'array',
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 }

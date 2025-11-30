@@ -37,4 +37,13 @@ class AuthController extends Controller
         ]
     ]);
 }
+public function logout(Request $request)
+{
+    // Eliminar solo el token actual (logout del dispositivo activo)
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'message' => 'Sesión cerrada correctamente'
+    ]);
+}
 }

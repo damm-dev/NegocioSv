@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\RegistroController;
+
+
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', function () {
@@ -7,3 +10,6 @@ Route::get('/ping', function () {
         'message' => 'API LARAVEL FUNCIONANDO 🚀'
     ]);
 });
+
+
+Route::post('/registrar', [RegistroController::class, 'registrar']); 

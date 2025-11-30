@@ -8,6 +8,8 @@ use App\Models\Usuario;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class NegocioController extends Controller
 {
@@ -138,4 +140,161 @@ class NegocioController extends Controller
             ], 500);
         }
     }
+
+    function listarNegocios()
+    {
+        try {
+            // Traemos los negocios con su Municipio y sus Categorías
+            // paginate(10) para no mostrar muchos negocios a la vez
+            $negocios = Negocio::with(['municipio', 'categorias'])
+                ->orderBy('created_at', 'desc') // Los más nuevos primero
+                ->paginate(10);
+
+            return response()->json([
+                'status' => true,
+                'data' => $negocios
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al obtener los negocios: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    function detalleNegocio($id)
+    {
+        try {
+            // Usamos 'with' para traer los datos relacionados
+            $negocio = Negocio::with(['municipio', 'categorias', 'metodosPago', 'usuario'])
+                ->find($id);
+
+            // Si no existe, devolvemos error 404
+            if (!$negocio) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Negocio no encontrado'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $negocio
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Error del servidor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    function actualizarNegocio(Request $request, $id)
+    {
+        // Lógica para actualizar un negocio existente
+        try {
+            $negocio = Negocio::find($id);
+
+            if (!$negocio) {
+                return response()->json(['status' => false, 'message' => 'Negocio no encontrado'], 404);
+            }
+
+            // SEGURIDAD: Verificar que el usuario sea el dueño
+            if ($negocio->id_usuario !== Auth::id()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No tienes permiso para editar este negocio',
+                    'debug_info' => [
+                        'id_del_dueño_real' => $negocio->id_usuario,
+                        'id_del_usuario_logueado' => Auth::id()
+                    ]
+                ], 403);
+            }
+
+            // Validamos (todo opcional 'nullable' porque quizás solo quiere cambiar un campo)
+            $validator = Validator::make($request->all(), [
+                'nombre'            => 'nullable|string|max:100',
+                'descripcion'       => 'nullable|string',
+                'direccion'         => 'nullable|string',
+                'telefono'          => 'nullable|string',
+                'email_contacto'    => 'nullable|email',
+                'id_municipio'      => 'nullable|exists:municipios,id_municipio',
+                'id_categoria'      => 'nullable|array', // Para actualizar categorías
+                'metodos_pago'      => 'nullable|array', // Para actualizar métodos de pago
+                'logo'              => 'nullable|image|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            // Manejo del Logo (Si suben uno nuevo)
+            if ($request->hasFile('logo')) {
+                // 1. Borrar logo viejo si existe
+                if ($negocio->logo) {
+                    Storage::disk('public')->delete($negocio->logo);
+                }
+                // 2. Guardar nuevo
+                $rutaLogo = $request->file('logo')->store('logos', 'public');
+                $negocio->logo = $rutaLogo;
+            }
+
+            // Actualizar campos de texto
+            $negocio->update($request->except(['logo', 'id_categoria', 'metodos_pago']));
+
+            // Actualizar Relaciones (Sincronizar)
+            // sync() hace la magia: si tenías [1,2] y mandas [2,3], borra el 1 y agrega el 3.
+            if ($request->has('id_categoria')) {
+                $negocio->categorias()->sync($request->id_categoria);
+            }
+
+            if ($request->has('metodos_pago')) {
+                $negocio->metodosPago()->sync($request->metodos_pago);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Negocio actualizado correctamente',
+                'data' => $negocio->load('categorias', 'municipio') // Recargar datos para mostrar
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function eliminarNegocio($id)
+    {
+        try {
+            $negocio = Negocio::find($id);
+
+            if (!$negocio) {
+                return response()->json(['status' => false, 'message' => 'Negocio no encontrado'], 404);
+            }
+
+            // SEGURIDAD: Verificar dueño
+            if ($negocio->id_usuario !== Auth::id()) {
+                return response()->json(['status' => false, 'message' => 'No tienes permiso para eliminar este negocio'], 403);
+            }
+
+            //Borrar la imagen del servidor para ahorrar espacio
+            if ($negocio->logo) {
+                Storage::disk('public')->delete($negocio->logo);
+            }
+
+            // 2. Eliminar registro de la BD
+            $negocio->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Negocio eliminado correctamente'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
 }

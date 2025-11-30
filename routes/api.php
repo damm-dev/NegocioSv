@@ -15,7 +15,8 @@ Route::get('/ping', function () {
 Route::post('/registrar', [RegistroController::class, 'registrar']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/registrar_negocio', [NegocioController::class, 'registrarNegocio']);
-
+Route::get('/negocios', [NegocioController::class, 'listarNegocios']);
+Route::get('/negocio/{id}', [NegocioController::class, 'detalleNegocio']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -27,4 +28,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cerrar sesión / Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    
+    // Editar negocio
+    Route::put('/negocio/{id}', [NegocioController::class, 'actualizarNegocio']);
+
+    //eliminar negocio
+    Route::delete('/negocio/{id}', [NegocioController::class, 'eliminarNegocio']);
 });

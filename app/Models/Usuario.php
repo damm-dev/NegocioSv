@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
 
 class Usuario extends Authenticatable
 {
-    protected $table = 'usuarios';
+    use HasApiTokens, HasFactory, Notifiable;
+
+    protected $table = 'usuarios'; 
+
     protected $primaryKey = 'id_usuario';
 
     protected $fillable = [

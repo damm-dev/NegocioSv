@@ -2,28 +2,35 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class Usuario extends Model
+class Usuario extends Authenticatable
 {
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
-    public $timestamps = false;
 
     protected $fillable = [
         'email',
         'password',
-        'estado',
-        'fecha_creacion'
+        'id_estado_usuario'
+    ];
+
+    protected $hidden = [
+        'password'
     ];
 
     public function perfil()
     {
-        return $this->hasOne(Perfil::class, 'id_usuario', 'id_usuario');
+        return $this->hasOne(Perfil::class, 'id_usuario');
     }
 
     public function intereses()
     {
-        return $this->hasMany(Interes::class, 'id_usuario', 'id_usuario');
+        return $this->hasMany(Interes::class, 'id_usuario');
+    }
+
+    public function estado()
+    {
+        return $this->belongsTo(EstadoUsuario::class, 'id_estado_usuario');
     }
 }

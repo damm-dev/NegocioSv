@@ -8,7 +8,6 @@ class Perfil extends Model
 {
     protected $table = 'perfiles';
     protected $primaryKey = 'id_perfil';
-    public $timestamps = false;
 
     protected $fillable = [
         'id_usuario',
@@ -20,10 +19,16 @@ class Perfil extends Model
         'foto',
         'id_municipio',
         'descripcion',
+        'ubicacion_activa'
     ];
 
     public function usuario()
     {
-        return $this->belongsTo(Usuario::class, 'id_usuario', 'id_usuario');
+        return $this->belongsTo(Usuario::class, 'id_usuario');
+    }
+
+    public function municipio()
+    {
+        return $this->belongsTo(Municipio::class, 'id_municipio');
     }
 }

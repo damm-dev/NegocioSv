@@ -6,19 +6,21 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
-        //
+        Schema::create('terminos', function (Blueprint $table) {
+            $table->id('id_termino');
+            $table->unsignedBigInteger('id_usuario');
+            $table->boolean('acepta_terminos')->default(false);
+            $table->boolean('acepta_politicas')->default(false);
+            $table->timestamps();
+
+            $table->foreign('id_usuario')->references('id_usuario')->on('usuarios')->onDelete('cascade');
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
-        //
+        Schema::dropIfExists('terminos');
     }
 };

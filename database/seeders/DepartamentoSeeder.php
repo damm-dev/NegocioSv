@@ -2,16 +2,20 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Departamento;
 
 class DepartamentoSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function run()
     {
-        //
+        $departamentos = [
+            'San Salvador', 'La Libertad', 'Santa Ana',
+            'San Miguel', 'La Unión', 'Sonsonate'
+        ];
+
+        foreach ($departamentos as $nombre) {
+            Departamento::create(['nombre' => $nombre]);
+        }
     }
 }

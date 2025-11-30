@@ -2,16 +2,17 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Termino;
 
 class TerminoSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function run()
     {
-        //
+        Termino::create([
+            'id_usuario' => 1,
+            'acepta_terminos' => true,
+            'acepta_politicas' => true
+        ]);
     }
 }

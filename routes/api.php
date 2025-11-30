@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RegistroController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\NegocioController;
 
 Route::get('/ping', function () {
     return response()->json([
@@ -13,6 +14,7 @@ Route::get('/ping', function () {
 
 Route::post('/registrar', [RegistroController::class, 'registrar']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/registrar_negocio', [NegocioController::class, 'registrarNegocio']);
 
 
 Route::middleware('auth:sanctum')->group(function () {

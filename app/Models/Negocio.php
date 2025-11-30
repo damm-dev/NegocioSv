@@ -3,34 +3,48 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Categoria;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Negocio extends Model
 {
-    public function categoria()
-    {
-        return $this->belongsTo(Categoria::class);
-    }
+    use HasFactory;
+
     protected $table = 'negocios';
+    protected $primaryKey = 'id_negocio';  //clave primaria
 
     protected $fillable = [
-        'nombreNegocio',
-        'email',
-        'password',
-        'productos',
+        'id_usuario',
+        'id_municipio',
+        'nombre',
+        'descripcion',
         'direccion',
-        'metodosPago',
-        'categoria',
         'telefono',
-        'foto',
-        'descripcion'
+        'email_contacto',
+        'logo',
+        'estado_verificacion'
     ];
 
-    protected $casts = [
-        'metodosPago' => 'array',
-    ];
+    // Relación: Un negocio pertenece a un Usuario
+    public function usuario()
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario', 'id_usuario');
+    }
 
-    protected $hidden = [
-        'password',
-    ];
+    // Relación: Un negocio tiene muchas categorías
+    public function categorias()
+    {
+        return $this->belongsToMany(Categoria::class, 'negocio_categoria', 'id_negocio', 'id_categoria');
+    }
+
+    // Relación: Un negocio acepta muchos métodos de pago
+    public function metodosPago()
+    {
+        return $this->belongsToMany(MetodoPago::class, 'negocio_metodo_pago', 'id_negocio', 'id_metodo_pago');
+    }
+    
+    // Relación: Un negocio está en un municipio
+    public function municipio()
+    {
+        return $this->belongsTo(Municipio::class, 'id_municipio', 'id_municipio');
+    }
 }

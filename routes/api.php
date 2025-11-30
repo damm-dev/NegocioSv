@@ -1,8 +1,10 @@
 <?php
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\NegocioController;
-use App\Http\Controllers\UsuarioController;
+
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\RegistroController;
+use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\NegocioController;
 
 Route::get('/ping', function () {
     return response()->json([
@@ -10,24 +12,19 @@ Route::get('/ping', function () {
     ]);
 });
 
-Route::post('/test-json', function (Illuminate\Http\Request $request) {
-    return response()->json([
-        'received_all' => $request->all(),
-        'received_input' => $request->input(),
-        'received_json' => $request->json()->all(),
-        'raw_content' => $request->getContent(),
-        'content_type' => $request->header('Content-Type'),
-    ]);
+Route::post('/registrar', [RegistroController::class, 'registrar']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/registrar_negocio', [NegocioController::class, 'registrarNegocio']);
+
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Ver perfil
+    Route::get('/perfil', [PerfilController::class, 'verPerfil']);
+
+    // Actualizar perfil
+    Route::put('/perfil', [PerfilController::class, 'actualizarPerfil']);
+
+    // Cerrar sesión / Logout
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
-
-Route::post('/auth/registro_usuario', [AuthController::class, 'register']);
-Route::post('/auth/registro_negocios', [AuthController::class, 'registerBusiness']);
-Route::post('/auth/login', [AuthController::class, 'login']);
-
-//Rutas de la información de usuario
-//Route::get('/user/userInfomation/{id}', [UsuarioController::class, 'userInformation']);
-
-//esta ruta obtiene la lista de negocios
-Route::get('/listas_negocios', [NegocioController::class, 'listaNegocios']);
-//esta ruta obtiene los datos de un negocio en específico
-Route::get('/negocios/{id}', [NegocioController::class, 'negocioPorId']);

@@ -3,18 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Negocio;
 
 class Categoria extends Model
 {
     protected $table = 'categorias';
+    protected $primaryKey = 'id_categoria';
 
     protected $fillable = [
-        'nombre',
+        'nombre'
     ];
 
-    public function negocios()
+    public function intereses()
     {
-        return $this->hasMany(Negocio::class);
+        return $this->hasMany(Interes::class, 'id_categoria');
     }
 }

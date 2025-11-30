@@ -28,13 +28,50 @@ class AuthController extends Controller
     // Crear nuevo token
     $token = $usuario->createToken('auth_token')->plainTextToken;
 
+    // Determinar el tipo de usuario (persona o negocio)
+    $perfil = $usuario->perfil;
+    $negocio = \App\Models\Negocio::where('id_usuario', $usuario->id_usuario)->first();
+    
+    $userType = 'persona'; // Por defecto
+    $userData = [
+        'id_usuario' => $usuario->id_usuario,
+        'email' => $usuario->email
+    ];
+
+    if ($negocio) {
+        // Es un negocio
+        $userType = 'negocio';
+        $userData['negocio'] = [
+            'id_negocio' => $negocio->id_negocio,
+            'nombre' => $negocio->nombre,
+            'descripcion' => $negocio->descripcion,
+            'direccion' => $negocio->direccion,
+            'telefono' => $negocio->telefono,
+            'email_contacto' => $negocio->email_contacto,
+            'logo' => $negocio->logo,
+            'estado_verificacion' => $negocio->estado_verificacion,
+        ];
+    } elseif ($perfil) {
+        // Es una persona
+        $userType = 'persona';
+        $userData['perfil'] = [
+            'nombres' => $perfil->nombres,
+            'apellidos' => $perfil->apellidos,
+            'fecha_nacimiento' => $perfil->fecha_nacimiento,
+            'genero' => $perfil->genero,
+            'telefono' => $perfil->telefono,
+            'foto' => $perfil->foto,
+            'id_municipio' => $perfil->id_municipio,
+            'descripcion' => $perfil->descripcion,
+            'ubicacion_activa' => $perfil->ubicacion_activa,
+        ];
+    }
+
     return response()->json([
         'message' => 'Login exitoso',
         'token' => $token,
-        'usuario' => [
-            'id_usuario' => $usuario->id_usuario,
-            'email' => $usuario->email
-        ]
+        'type' => $userType,
+        'usuario' => $userData
     ]);
 }
 public function logout(Request $request)

@@ -28,7 +28,7 @@ class NegocioController extends Controller
             'descripcion'       => 'required|string',
             'direccion'         => 'required|string',
             'id_municipio'      => 'required|exists:municipios,id_municipio', // Select municipio
-            'logo'              => 'nullable|image|max:2048',
+            'logoFile'              => 'nullable|image|max:2048',
             'email_contacto'    => 'required|email',
             'telefono'          => 'required|string',
             'metodos_pago'      => 'nullable|array', // Array de IDs
@@ -48,10 +48,10 @@ class NegocioController extends Controller
                 'password' => Hash::make($request->password),
             ]);
 
-            // B. Subir el LOGO si existe
-            $rutaLogo = null;
-            if ($request->hasFile('logo')) {
-                $rutaLogo = $request->file('logo')->store('logos', 'public');
+            // B. Subir el logoFile si existe
+            $rutalogoFile = null;
+            if ($request->hasFile('logoFile')) {
+                $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
             }
 
             // Crear el NEGOCIO
@@ -63,7 +63,7 @@ class NegocioController extends Controller
                 'direccion'       => $request->direccion,
                 'telefono'        => $request->telefono,
                 'email_contacto'  => $request->email_contacto,
-                'logo'            => $rutaLogo,
+                'logoFile'            => $rutalogoFile,
                 'estado_verificacion' => false, // Por defecto no verificado
             ]);
 
@@ -180,26 +180,26 @@ class NegocioController extends Controller
                 'id_municipio'      => 'nullable|exists:municipios,id_municipio',
                 'id_categoria'      => 'nullable|array', // Para actualizar categorías
                 'metodos_pago'      => 'nullable|array', // Para actualizar métodos de pago
-                'logo'              => 'nullable|image|max:2048',
+                'logoFile'              => 'nullable|image|max:2048',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            // Manejo del Logo (Si suben uno nuevo)
-            if ($request->hasFile('logo')) {
-                // 1. Borrar logo viejo si existe
-                if ($negocio->logo) {
-                    Storage::disk('public')->delete($negocio->logo);
+            // Manejo del logoFile (Si suben uno nuevo)
+            if ($request->hasFile('logoFile')) {
+                // 1. Borrar logoFile viejo si existe
+                if ($negocio->logoFile) {
+                    Storage::disk('public')->delete($negocio->logoFile);
                 }
                 // 2. Guardar nuevo
-                $rutaLogo = $request->file('logo')->store('logos', 'public');
-                $negocio->logo = $rutaLogo;
+                $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
+                $negocio->logoFile = $rutalogoFile;
             }
 
             // Actualizar campos de texto
-            $negocio->update($request->except(['logo', 'id_categoria', 'metodos_pago']));
+            $negocio->update($request->except(['logoFile', 'id_categoria', 'metodos_pago']));
 
             // Actualizar Relaciones (Sincronizar)
             // sync() hace la magia: si tenías [1,2] y mandas [2,3], borra el 1 y agrega el 3.
@@ -237,8 +237,8 @@ class NegocioController extends Controller
             }
 
             //Borrar la imagen del servidor para ahorrar espacio
-            if ($negocio->logo) {
-                Storage::disk('public')->delete($negocio->logo);
+            if ($negocio->logoFile) {
+                Storage::disk('public')->delete($negocio->logoFile);
             }
 
             // 2. Eliminar registro de la BD

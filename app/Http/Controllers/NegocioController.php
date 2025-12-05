@@ -20,7 +20,6 @@ class NegocioController extends Controller
             // Datos Usuario
             'email'             => 'required|email|unique:usuarios,email',
             'password'          => 'required|min:8',
-            
             // Datos Negocio
             'nombre_negocio'    => 'required|string|max:100',
             'id_categoria'      => 'required|array', // Array de IDs (Select múltiple)
@@ -201,7 +200,6 @@ class NegocioController extends Controller
             // Actualizar campos de texto
             $negocio->update($request->except(['logoFile', 'id_categoria', 'metodos_pago']));
 
-            // Actualizar Relaciones (Sincronizar)
             // sync() hace la magia: si tenías [1,2] y mandas [2,3], borra el 1 y agrega el 3.
             if ($request->has('id_categoria')) {
                 $negocio->categorias()->sync($request->id_categoria);
@@ -221,7 +219,7 @@ class NegocioController extends Controller
             return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
-
+    //función para eliminar un negocio y verificar que el usuario sea el dueño.
     public function eliminarNegocio($id)
     {
         try {

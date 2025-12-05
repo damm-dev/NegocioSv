@@ -255,5 +255,19 @@ class NegocioController extends Controller
             return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
+    // Función para obtener el catálogo de municipios
+    public function listarMunicipios()
+    {
+        try {
+            // Seleccionamos solo lo necesario para el select
+            $municipios = \App\Models\Municipio::select('id_municipio', 'nombre')
+                                  ->orderBy('nombre', 'asc') // Orden alfabético
+                                  ->get();
+
+            return response()->json($municipios, 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 
 }

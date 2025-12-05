@@ -17,6 +17,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/registrar_negocio', [NegocioController::class, 'registrarNegocio']);
 Route::get('/negocios', [NegocioController::class, 'listarNegocios']);
 Route::get('/negocio/{id}', [NegocioController::class, 'detalleNegocio']);
+Route::get('/municipios', [NegocioController::class, 'listarMunicipios']);//mostrar lista de municipios
 
 Route::middleware('auth:sanctum')->group(function () {
 

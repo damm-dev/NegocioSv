@@ -82,7 +82,7 @@ use App\Http\Controllers\AdminController;
 Route::post('/admin/login', [AdminController::class, 'login']);
 
 // Rutas protegidas de administrador
-Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:admin', 'admin'])->prefix('admin')->group(function () {
     // Logout
     Route::post('/logout', [AdminController::class, 'logout']);
     

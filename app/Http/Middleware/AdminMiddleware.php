@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Models\Administrador;
 
 class AdminMiddleware
 {
@@ -15,17 +16,19 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $user = $request->user('admin');
+        
         // Verificar que el usuario autenticado sea un administrador
-        if (!$request->user() || !($request->user() instanceof \App\Models\Administrador)) {
+        if (!$user || !($user instanceof Administrador)) {
             return response()->json([
                 'message' => 'No autorizado. Se requieren permisos de administrador.'
             ], 403);
         }
 
         // Verificar que el administrador esté activo
-        if (!$request->user()->activo) {
+        if (!$user->activo) {
             return response()->json([
-                'message' => 'Cuenta de administrador inactiva.'
+                'message' => 'Cuenta de administrador desactivada.'
             ], 403);
         }
 

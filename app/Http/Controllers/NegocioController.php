@@ -19,25 +19,21 @@ class NegocioController extends Controller
         $validator = Validator::make($request->all(), [
             // Datos Usuario
             'email'             => 'required|email|unique:usuarios,email',
-            'password'          => ['required','min:8',
-                'regex:/[a-zA-Z]/',      // Al menos una letra
-                'regex:/[0-9]/',         // Al menos un número
-            ],
-            
+            'password'          => 'required|min:8',            
             // Datos Negocio
             'nombre_negocio'    => 'required|string|min:3|max:100',
-            'id_categoria'      => 'required|array|min:1|max:3', // Entre 1 y 3 categorías
+            'id_categoria'      => 'required|array',
             'id_categoria.*'    => 'exists:categorias,id_categoria',
-            'descripcion'       => 'required|string|min:20|max:500',
-            'direccion'         => 'required|string|min:10',
+            'descripcion'       => 'required|string',
+            'direccion'         => 'required|string',
             'id_municipio'      => 'required|exists:municipios,id_municipio',
             'logo'              => 'nullable|image|max:2048',
             'email_contacto'    => 'required|email',
-            'telefono'          => ['required','string',
+            'telefono'          => 'required|string',
             'metodos_pago'      => 'nullable|array',
-        ], 
+        ]);
 
-        if ($validator->fails()) {
+        if($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 

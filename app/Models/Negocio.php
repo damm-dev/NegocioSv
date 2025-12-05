@@ -47,4 +47,10 @@ class Negocio extends Model
     {
         return $this->belongsTo(Municipio::class, 'id_municipio', 'id_municipio');
     }
+
+    // Relación: Un negocio tiene muchas reseñas
+    public function resenas()
+    {
+        return $this->hasMany(Resena::class, 'id_negocio', 'id_negocio');
+    }
 }

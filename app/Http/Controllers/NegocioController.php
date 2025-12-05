@@ -105,6 +105,7 @@ class NegocioController extends Controller
             // Traemos los negocios con su Municipio y sus Categorías
             // paginate(10) para no mostrar muchos negocios a la vez
             $negocios = Negocio::with(['municipio', 'categorias'])
+                ->withAvg('resenas', 'calificacion') // Calificación promedio
                 ->orderBy('created_at', 'desc') // Los más nuevos primero
                 ->paginate(10);
 

@@ -10,8 +10,21 @@ class DepartamentoSeeder extends Seeder
     public function run()
     {
         $departamentos = [
-            'San Salvador', 'La Libertad', 'Santa Ana',
-            'San Miguel', 'La Unión', 'Sonsonate'
+            
+            'San Salvador', 
+            'La Libertad', 
+            'Santa Ana',
+            'San Miguel', 
+            'La Unión', 
+            'Sonsonate',
+            'Ahuachapán',
+            'Cabañas',
+            'Chalatenango',
+            'Cuscatlán',
+            'Morazán',
+            'La Paz',
+            'San Vicente',
+            'Usulután'
         ];
 
         foreach ($departamentos as $nombre) {

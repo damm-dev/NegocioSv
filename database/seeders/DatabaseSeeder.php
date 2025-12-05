@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         DepartamentoSeeder::class,
         MunicipioSeeder::class,
         CategoriaSeeder::class,
+        MetodoPagoSeeder::class,
         UsuarioSeeder::class,
         InteresSeeder::class,
         TerminoSeeder::class,

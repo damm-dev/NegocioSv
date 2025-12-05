@@ -19,9 +19,7 @@ class NegocioController extends Controller
         $validator = Validator::make($request->all(), [
             // Datos Usuario
             'email'             => 'required|email|unique:usuarios,email',
-            'password'          => [
-                'required',
-                'min:8',
+            'password'          => ['required','min:8',
                 'regex:/[a-zA-Z]/',      // Al menos una letra
                 'regex:/[0-9]/',         // Al menos un número
             ],
@@ -35,48 +33,12 @@ class NegocioController extends Controller
             'id_municipio'      => 'required|exists:municipios,id_municipio',
             'logo'              => 'nullable|image|max:2048',
             'email_contacto'    => 'required|email',
-            'telefono'          => [
-                'required',
-                'regex:/^\d{4}-\d{4}$/', // Formato ####-####
-                'regex:/^[267]/',        // Debe empezar con 2, 6 o 7
-            ],
+            'telefono'          => ['required','string',
             'metodos_pago'      => 'nullable|array',
-            'metodos_pago.*'    => 'exists:metodos_pago,id_metodo_pago',
-        ], [
-            // Mensajes personalizados en español
-            'email.required' => 'El correo electrónico es obligatorio',
-            'email.email' => 'El correo electrónico debe ser válido',
-            'email.unique' => 'Este correo electrónico ya está registrado',
-            'password.required' => 'La contraseña es obligatoria',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres',
-            'password.regex' => 'La contraseña debe contener al menos una letra y un número',
-            'nombre_negocio.required' => 'El nombre del negocio es obligatorio',
-            'nombre_negocio.min' => 'El nombre del negocio debe tener al menos 3 caracteres',
-            'nombre_negocio.max' => 'El nombre del negocio no puede exceder 100 caracteres',
-            'id_categoria.required' => 'Debes seleccionar al menos una categoría',
-            'id_categoria.min' => 'Debes seleccionar al menos una categoría',
-            'id_categoria.max' => 'Puedes seleccionar máximo 3 categorías',
-            'id_categoria.*.exists' => 'Una o más categorías seleccionadas no son válidas',
-            'descripcion.required' => 'La descripción del negocio es obligatoria',
-            'descripcion.min' => 'La descripción debe tener al menos 20 caracteres',
-            'descripcion.max' => 'La descripción no puede exceder 500 caracteres',
-            'direccion.required' => 'La dirección del negocio es obligatoria',
-            'direccion.min' => 'La dirección debe tener al menos 10 caracteres',
-            'id_municipio.required' => 'El municipio es obligatorio',
-            'id_municipio.exists' => 'El municipio seleccionado no es válido',
-            'logo.image' => 'El archivo debe ser una imagen',
-            'logo.max' => 'La imagen no puede ser mayor a 2MB',
-            'email_contacto.required' => 'El correo de contacto es obligatorio',
-            'email_contacto.email' => 'El correo de contacto debe ser válido',
-            'telefono.required' => 'El teléfono es obligatorio',
-            'telefono.regex' => 'El teléfono debe tener el formato ####-#### y comenzar con 2, 6 o 7',
-            'metodos_pago.*.exists' => 'Uno o más métodos de pago seleccionados no son válidos',
-        ]);
+        ], 
 
         if ($validator->fails()) {
-            return response()->json([
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         // 2. Transacción (Todo o Nada)
@@ -90,10 +52,10 @@ class NegocioController extends Controller
                 'id_estado_usuario' => 1, // Estado activo por defecto
             ]);
 
-            // B. Subir el LOGO si existe
-            $rutaLogo = null;
-            if ($request->hasFile('logo')) {
-                $rutaLogo = $request->file('logo')->store('logos', 'public');
+            // B. Subir el logoFile si existe
+            $rutalogoFile = null;
+            if ($request->hasFile('logoFile')) {
+                $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
             }
 
             // C. Crear el NEGOCIO
@@ -223,28 +185,27 @@ class NegocioController extends Controller
                 'id_municipio'      => 'nullable|exists:municipios,id_municipio',
                 'id_categoria'      => 'nullable|array', // Para actualizar categorías
                 'metodos_pago'      => 'nullable|array', // Para actualizar métodos de pago
-                'logo'              => 'nullable|image|max:2048',
+                'logoFile'              => 'nullable|image|max:2048',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            // Manejo del Logo (Si suben uno nuevo)
-            if ($request->hasFile('logo')) {
-                // 1. Borrar logo viejo si existe
-                if ($negocio->logo) {
-                    Storage::disk('public')->delete($negocio->logo);
+            // Manejo del logoFile (Si suben uno nuevo)
+            if ($request->hasFile('logoFile')) {
+                // 1. Borrar logoFile viejo si existe
+                if ($negocio->logoFile) {
+                    Storage::disk('public')->delete($negocio->logoFile);
                 }
                 // 2. Guardar nuevo
-                $rutaLogo = $request->file('logo')->store('logos', 'public');
-                $negocio->logo = $rutaLogo;
+                $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
+                $negocio->logoFile = $rutalogoFile;
             }
 
             // Actualizar campos de texto
-            $negocio->update($request->except(['logo', 'id_categoria', 'metodos_pago']));
+            $negocio->update($request->except(['logoFile', 'id_categoria', 'metodos_pago']));
 
-            // Actualizar Relaciones (Sincronizar)
             // sync() hace la magia: si tenías [1,2] y mandas [2,3], borra el 1 y agrega el 3.
             if ($request->has('id_categoria')) {
                 $negocio->categorias()->sync($request->id_categoria);
@@ -264,7 +225,7 @@ class NegocioController extends Controller
             return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
-
+    //función para eliminar un negocio y verificar que el usuario sea el dueño.
     public function eliminarNegocio($id)
     {
         try {
@@ -280,8 +241,8 @@ class NegocioController extends Controller
             }
 
             //Borrar la imagen del servidor para ahorrar espacio
-            if ($negocio->logo) {
-                Storage::disk('public')->delete($negocio->logo);
+            if ($negocio->logoFile) {
+                Storage::disk('public')->delete($negocio->logoFile);
             }
 
             // 2. Eliminar registro de la BD

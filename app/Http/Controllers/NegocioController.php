@@ -27,13 +27,14 @@ class NegocioController extends Controller
             'descripcion'       => 'required|string',
             'direccion'         => 'required|string',
             'id_municipio'      => 'required|exists:municipios,id_municipio',
-            'logo'              => 'nullable|image|max:2048',
+            'logoFile'              => 'nullable|image|max:2048',
             'email_contacto'    => 'required|email',
             'telefono'          => 'required|string',
             'metodos_pago'      => 'nullable|array',
         ]);
 
         if($validator->fails()) {
+            \Illuminate\Support\Facades\Log::error('Falló la validación al registrar negocio: ', $validator->errors()->all());
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
@@ -63,7 +64,7 @@ class NegocioController extends Controller
                 'direccion'           => trim($request->direccion),
                 'telefono'            => $request->telefono,
                 'email_contacto'      => $request->email_contacto,
-                'logo'                => $rutaLogo,
+                'logo'                => $rutalogoFile,
                 'estado_verificacion' => false, // Por defecto no verificado
             ]);
 
@@ -182,7 +183,7 @@ class NegocioController extends Controller
                 'id_municipio'      => 'nullable|exists:municipios,id_municipio',
                 'id_categoria'      => 'nullable|array', // Para actualizar categorías
                 'metodos_pago'      => 'nullable|array', // Para actualizar métodos de pago
-                'logoFile'              => 'nullable|image|max:2048',
+                'logo'              => 'nullable|image|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -192,12 +193,12 @@ class NegocioController extends Controller
             // Manejo del logoFile (Si suben uno nuevo)
             if ($request->hasFile('logoFile')) {
                 // 1. Borrar logoFile viejo si existe
-                if ($negocio->logoFile) {
-                    Storage::disk('public')->delete($negocio->logoFile);
+                if ($negocio->logo){
+                    Storage::disk('public')->delete($negocio->logo);
                 }
                 // 2. Guardar nuevo
                 $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
-                $negocio->logoFile = $rutalogoFile;
+                $negocio->logo = $rutalogoFile;
             }
 
             // Actualizar campos de texto
@@ -238,8 +239,8 @@ class NegocioController extends Controller
             }
 
             //Borrar la imagen del servidor para ahorrar espacio
-            if ($negocio->logoFile) {
-                Storage::disk('public')->delete($negocio->logoFile);
+            if ($negocio->logo) {
+                Storage::disk('public')->delete($negocio->logo);
             }
 
             // 2. Eliminar registro de la BD

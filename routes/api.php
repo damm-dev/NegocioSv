@@ -61,8 +61,10 @@ Route::get('/metodos-pago', function() {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
-    // Ver perfil
+    // Ver perfil (persona)
     Route::get('/perfil', [PerfilController::class, 'verPerfil']);
+    // Ver perfil (negocio)
+    Route::get('/perfil/negocio', [PerfilController::class, 'verPerfilNegocio']);
     // Actualizar perfil
     Route::put('/perfil', [PerfilController::class, 'actualizarPerfil']);
     // Cerrar sesión / Logout

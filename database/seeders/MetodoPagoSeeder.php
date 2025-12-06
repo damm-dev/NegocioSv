@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\MetodoPago;
 use Illuminate\Database\Seeder;
+use App\Models\MetodoPago;
 
 class MetodoPagoSeeder extends Seeder
 {
@@ -13,15 +13,17 @@ class MetodoPagoSeeder extends Seeder
     public function run(): void
     {
         $metodos = [
-            'Efectivo',
-            'Tarjeta',
-            'Transferencia',
-            'Bitcoin',
-            'Otros',
+            ['nombre' => 'Efectivo'],
+            ['nombre' => 'Tarjeta de Crédito'],
+            ['nombre' => 'Tarjeta de Débito'],
+            ['nombre' => 'Transferencia Bancaria'],
+            ['nombre' => 'Bitcoin'],
+            ['nombre' => 'Chivo Wallet'],
+            ['nombre' => 'PayPal'],
         ];
 
-        foreach ($metodos as $nombreMetodo) {
-            MetodoPago::firstOrCreate(['nombre' => $nombreMetodo]);
+        foreach ($metodos as $metodo) {
+            MetodoPago::create($metodo);
         }
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class NegocioController extends Controller
 {
@@ -23,15 +24,42 @@ class NegocioController extends Controller
             'password'          => 'required|min:8',            
             // Datos Negocio
             'nombre_negocio'    => 'required|string|min:3|max:100',
-            'id_categoria'      => 'required|array',
-            'id_categoria.*'    => 'exists:categorias,id_categoria',
-            'descripcion'       => 'required|string',
-            'direccion'         => 'required|string',
-            'id_municipio'      => 'required|exists:municipios,id_municipio',
-            'logoFile'              => 'nullable|image|max:2048',
+            'id_categoria'      => 'required|array|min:1',
+            'id_categoria.*'    => 'integer|exists:categorias,id_categoria',
+            'descripcion'       => 'required|string|min:20|max:500',
+            'direccion'         => 'required|string|min:10',
+            'id_municipio'      => 'required|integer|exists:municipios,id_municipio',
+            'logoFile'          => 'nullable|image|max:2048',
+            'logo'              => 'nullable|string', // Para base64
             'email_contacto'    => 'required|email',
-            'telefono'          => 'required|string',
+            'telefono'          => 'required|string|regex:/^\d{4}-\d{4}$/',
             'metodos_pago'      => 'nullable|array',
+            'metodos_pago.*'    => 'integer|exists:metodos_pago,id_metodo_pago',
+        ], [
+            // Mensajes personalizados en español
+            'email.required' => 'El correo electrónico es obligatorio',
+            'email.email' => 'El correo electrónico debe ser válido',
+            'email.unique' => 'Este correo electrónico ya está registrado',
+            'password.required' => 'La contraseña es obligatoria',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres',
+            'nombre_negocio.required' => 'El nombre del negocio es obligatorio',
+            'nombre_negocio.min' => 'El nombre del negocio debe tener al menos 3 caracteres',
+            'nombre_negocio.max' => 'El nombre del negocio no puede exceder 100 caracteres',
+            'id_categoria.required' => 'Debes seleccionar al menos una categoría',
+            'id_categoria.min' => 'Debes seleccionar al menos una categoría',
+            'id_categoria.*.exists' => 'Una o más categorías seleccionadas no son válidas',
+            'descripcion.required' => 'La descripción es obligatoria',
+            'descripcion.min' => 'La descripción debe tener al menos 20 caracteres',
+            'descripcion.max' => 'La descripción no puede exceder 500 caracteres',
+            'direccion.required' => 'La dirección es obligatoria',
+            'direccion.min' => 'La dirección debe tener al menos 10 caracteres',
+            'id_municipio.required' => 'El municipio es obligatorio',
+            'id_municipio.exists' => 'El municipio seleccionado no es válido',
+            'email_contacto.required' => 'El correo de contacto es obligatorio',
+            'email_contacto.email' => 'El correo de contacto debe ser válido',
+            'telefono.required' => 'El teléfono es obligatorio',
+            'telefono.regex' => 'El teléfono debe tener el formato ####-####',
+            'metodos_pago.*.exists' => 'Uno o más métodos de pago seleccionados no son válidos',
         ]);
 
         if($validator->fails()) {
@@ -55,22 +83,51 @@ class NegocioController extends Controller
                 'apellidos'  => 'Negocio', // Valor por defecto
             ]);
 
-            // B. Subir el logoFile si existe
+            // B. Procesar logo si existe
             $rutalogoFile = null;
+            
+            // Opción 1: Si viene como archivo (multipart/form-data)
             if ($request->hasFile('logoFile')) {
-                $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
+                $file = $request->file('logoFile');
+                $filename = 'negocio_' . $usuario->id_usuario . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $rutalogoFile = $file->storeAs('negocios', $filename, 'public');
+            }
+            // Opción 2: Si viene como base64
+            elseif ($request->logo && strpos($request->logo, 'data:image') === 0) {
+                try {
+                    // Extraer el tipo de imagen y los datos base64
+                    preg_match('/data:image\/(\w+);base64,(.*)/', $request->logo, $matches);
+                    if (count($matches) === 3) {
+                        $imageType = $matches[1]; // jpeg, png, etc.
+                        $imageData = base64_decode($matches[2]);
+                        
+                        // Generar nombre único para el archivo
+                        $filename = 'negocio_' . $usuario->id_usuario . '_' . time() . '.' . $imageType;
+                        
+                        // Guardar en storage/app/public/negocios
+                        Storage::disk('public')->put('negocios/' . $filename, $imageData);
+                        $rutalogoFile = 'negocios/' . $filename;
+                    }
+                } catch (\Exception $e) {
+                    // Si falla la conversión, continuar sin logo
+                    \Log::warning('Error al procesar logo base64: ' . $e->getMessage());
+                }
+            }
+            // Opción 3: Si viene como URL o string simple
+            elseif ($request->logo) {
+                $rutalogoFile = $request->logo;
             }
 
             // C. Crear el NEGOCIO
             $negocio = Negocio::create([
-                'id_usuario'          => $usuario->id_usuario,
-                'id_municipio'        => $request->id_municipio,
-                'nombre'              => trim($request->nombre_negocio),
-                'descripcion'         => trim($request->descripcion),
-                'direccion'           => trim($request->direccion),
-                'telefono'            => $request->telefono,
-                'email_contacto'      => $request->email_contacto,
-                'logo'                => $rutalogoFile,
+                'id_usuario'      => $usuario->id_usuario, // Usamos el ID del usuario recién creado
+                'id_municipio'    => $request->id_municipio,
+                'nombre'          => $request->nombre_negocio,
+                'descripcion'     => $request->descripcion,
+                'direccion'       => $request->direccion,
+                'telefono'        => $request->telefono,
+                'email_contacto'  => $request->email_contacto,
+                'logo'            => $rutalogoFile,
                 'estado_verificacion' => false, // Por defecto no verificado
             ]);
 
@@ -106,197 +163,95 @@ class NegocioController extends Controller
         }
     }
 
-    function listarNegocios()
+    public function listarNegocios()
     {
         try {
-            // Traemos los negocios con su Municipio y sus Categorías
-            // paginate(10) para no mostrar muchos negocios a la vez
-            $negocios = Negocio::with(['municipio', 'categorias'])
-                ->withAvg('resenas', 'calificacion') // Calificación promedio
-                ->orderBy('created_at', 'desc') // Los más nuevos primero
-                ->paginate(10);
+            $negocios = Negocio::with(['municipio', 'categorias', 'metodosPago'])
+                ->where('estado_verificacion', true)
+                ->get();
 
             return response()->json([
-                'status' => true,
+                'success' => true,
                 'data' => $negocios
-            ], 200);
-
+            ]);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener los negocios: ' . $e->getMessage()
+                'success' => false,
+                'message' => 'Error al obtener negocios: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    function detalleNegocio($id)
+    public function detalleNegocio($id)
     {
         try {
-            // Agregamos 'resenas.usuario' para traer las reseñas y QUIÉN las escribió (para mostrar nombre/foto en el front)
-            $negocio = Negocio::with([
-                'municipio', 
-                'categorias', 
-                'metodosPago', 
-                'usuario', 
-                'resenas.usuario' // Trae las reseñas y los datos del usuario que reseñó
-            ])->find($id);
+            $negocio = Negocio::with(['municipio', 'categorias', 'metodosPago'])
+                ->findOrFail($id);
 
-            if (!$negocio) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Negocio no encontrado'
-                ], 404);
-            }
+            return response()->json([
+                'success' => true,
+                'data' => $negocio
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Negocio no encontrado'
+            ], 404);
+        }
+    }
 
-            // Lógica para saber si el usuario logueado ya hizo una reseña
-            $usuarioYaReseno = false;
+    public function actualizarNegocio(Request $request, $id)
+    {
+        try {
+            $negocio = Negocio::findOrFail($id);
             
-            // Verificamos si hay alguien logueado con Sanctum
-            if (Auth::guard('sanctum')->check()) {
-                $usuarioId = Auth::guard('sanctum')->id();
-                
-                // Buscamos en la colección de reseñas que ya trajimos si alguna pertenece a este usuario
-                $usuarioYaReseno = $negocio->resenas->contains('id_usuario', $usuarioId);
-            }
-
-            // Calculamos el promedio de calificación manualmente
-            $promedio = $negocio->resenas->avg('calificacion');
-
-            return response()->json([
-                'status' => true,
-                'data' => $negocio,
-                'meta' => [
-                    'promedio_calificacion' => round($promedio, 1), 
-                    'total_resenas' => $negocio->resenas->count(),
-                    'usuario_actual_ya_reseno' => $usuarioYaReseno // <--- Esto le sirve al Front para ocultar/mostrar el formulario
-                ]
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Error del servidor: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    function actualizarNegocio(Request $request, $id)
-    {
-        // Lógica para actualizar un negocio existente
-        try {
-            $negocio = Negocio::find($id);
-
-            if (!$negocio) {
-                return response()->json(['status' => false, 'message' => 'Negocio no encontrado'], 404);
-            }
-
-            // SEGURIDAD: Verificar que el usuario sea el dueño
+            // Verificar que el usuario autenticado sea el dueño
             if ($negocio->id_usuario !== Auth::id()) {
                 return response()->json([
-                    'status' => false,
-                    'message' => 'No tienes permiso para editar este negocio',
-                    'debug_info' => [
-                        'id_del_dueño_real' => $negocio->id_usuario,
-                        'id_del_usuario_logueado' => Auth::id()
-                    ]
+                    'success' => false,
+                    'message' => 'No tienes permiso para editar este negocio'
                 ], 403);
             }
 
-            // Validamos (todo opcional 'nullable' porque quizás solo quiere cambiar un campo)
-            $validator = Validator::make($request->all(), [
-                'nombre'            => 'nullable|string|max:100',
-                'descripcion'       => 'nullable|string',
-                'direccion'         => 'nullable|string',
-                'telefono'          => 'nullable|string',
-                'email_contacto'    => 'nullable|email',
-                'id_municipio'      => 'nullable|exists:municipios,id_municipio',
-                'id_categoria'      => 'nullable|array', // Para actualizar categorías
-                'metodos_pago'      => 'nullable|array', // Para actualizar métodos de pago
-                'logo'              => 'nullable|image|max:2048',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json(['errors' => $validator->errors()], 422);
-            }
-
-            // Manejo del logoFile (Si suben uno nuevo)
-            if ($request->hasFile('logoFile')) {
-                // 1. Borrar logoFile viejo si existe
-                if ($negocio->logo){
-                    Storage::disk('public')->delete($negocio->logo);
-                }
-                // 2. Guardar nuevo
-                $rutalogoFile = $request->file('logoFile')->store('logoFiles', 'public');
-                $negocio->logo = $rutalogoFile;
-            }
-
-            // Actualizar campos de texto
-            $negocio->update($request->except(['logoFile', 'id_categoria', 'metodos_pago']));
-
-            // sync() hace la magia: si tenías [1,2] y mandas [2,3], borra el 1 y agrega el 3.
-            if ($request->has('id_categoria')) {
-                $negocio->categorias()->sync($request->id_categoria);
-            }
-
-            if ($request->has('metodos_pago')) {
-                $negocio->metodosPago()->sync($request->metodos_pago);
-            }
+            $negocio->update($request->all());
 
             return response()->json([
-                'status' => true,
+                'success' => true,
                 'message' => 'Negocio actualizado correctamente',
-                'data' => $negocio->load('categorias', 'municipio') // Recargar datos para mostrar
-            ], 200);
-
+                'data' => $negocio
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar negocio: ' . $e->getMessage()
+            ], 500);
         }
     }
-    //función para eliminar un negocio y verificar que el usuario sea el dueño.
+
     public function eliminarNegocio($id)
     {
         try {
-            $negocio = Negocio::find($id);
-
-            if (!$negocio) {
-                return response()->json(['status' => false, 'message' => 'Negocio no encontrado'], 404);
-            }
-
-            // SEGURIDAD: Verificar dueño
+            $negocio = Negocio::findOrFail($id);
+            
+            // Verificar que el usuario autenticado sea el dueño
             if ($negocio->id_usuario !== Auth::id()) {
-                return response()->json(['status' => false, 'message' => 'No tienes permiso para eliminar este negocio'], 403);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para eliminar este negocio'
+                ], 403);
             }
 
-            //Borrar la imagen del servidor para ahorrar espacio
-            if ($negocio->logo) {
-                Storage::disk('public')->delete($negocio->logo);
-            }
-
-            // 2. Eliminar registro de la BD
             $negocio->delete();
 
             return response()->json([
-                'status' => true,
+                'success' => true,
                 'message' => 'Negocio eliminado correctamente'
-            ], 200);
-
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar negocio: ' . $e->getMessage()
+            ], 500);
         }
     }
-    // Función para obtener el catálogo de municipios
-    public function listarMunicipios()
-    {
-        try {
-            // Seleccionamos solo lo necesario para el select
-            $municipios = \App\Models\Municipio::select('id_municipio', 'nombre')
-                                  ->orderBy('nombre', 'asc') // Orden alfabético
-                                  ->get();
-
-            return response()->json($municipios, 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
 }

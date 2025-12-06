@@ -8,7 +8,9 @@ use App\Models\Interes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class RegistroController extends Controller
 {
@@ -49,7 +51,8 @@ class RegistroController extends Controller
             ],
             'id_municipio'      => 'required|integer|exists:municipios,id_municipio',
             'descripcion'       => 'nullable|string|max:500',
-            'foto'              => 'nullable|string',
+            'foto'              => 'nullable|string', // Puede ser base64 o URL
+            'foto_file'         => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048', // Máximo 2MB
             'intereses'         => 'required|array|min:1|max:5',
             'intereses.*'       => 'integer|exists:categorias,id_categoria',
             'ubicacion_activa'  => 'nullable|boolean',
@@ -83,29 +86,50 @@ class RegistroController extends Controller
             'intereses.*.exists' => 'Uno o más intereses seleccionados no son válidos',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Validar edad mínima (18 años)
-        $fechaNacimiento = Carbon::parse($request->fecha_nacimiento);
-        $edad = $fechaNacimiento->age;
-        
-        if ($edad < 18) {
-            return response()->json([
-                'errors' => ['fecha_nacimiento' => ['Debes ser mayor de 18 años para registrarte']]
-            ], 422);
-        }
-
         try {
+            // Crear usuario
             $usuario = Usuario::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'id_estado_usuario' => 1, // Estado activo por defecto
             ]);
 
+            // Procesar foto si existe
+            $fotoPath = '';
+            
+            // Opción 1: Si viene como archivo (multipart/form-data)
+            if ($request->hasFile('foto_file')) {
+                $file = $request->file('foto_file');
+                $filename = 'perfil_' . $usuario->id_usuario . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $fotoPath = $file->storeAs('perfiles', $filename, 'public');
+            }
+            // Opción 2: Si viene como base64
+            elseif ($request->foto && strpos($request->foto, 'data:image') === 0) {
+                try {
+                    // Extraer el tipo de imagen y los datos base64
+                    preg_match('/data:image\/(\w+);base64,(.*)/', $request->foto, $matches);
+                    if (count($matches) === 3) {
+                        $imageType = $matches[1]; // jpeg, png, etc.
+                        $imageData = base64_decode($matches[2]);
+                        
+                        // Generar nombre único para el archivo
+                        $filename = 'perfil_' . $usuario->id_usuario . '_' . time() . '.' . $imageType;
+                        
+                        // Guardar en storage/app/public/perfiles
+                        Storage::disk('public')->put('perfiles/' . $filename, $imageData);
+                        $fotoPath = 'perfiles/' . $filename;
+                    }
+                } catch (\Exception $e) {
+                    // Si falla la conversión, continuar sin foto
+                    \Log::warning('Error al procesar foto base64: ' . $e->getMessage());
+                }
+            }
+            // Opción 3: Si viene como URL o string simple
+            elseif ($request->foto) {
+                $fotoPath = $request->foto;
+            }
+
+            // Crear perfil
             $perfil = Perfil::create([
                 'id_usuario' => $usuario->id_usuario,
                 'nombres' => trim($request->nombres),
@@ -113,7 +137,7 @@ class RegistroController extends Controller
                 'fecha_nacimiento' => $request->fecha_nacimiento,
                 'genero' => $request->genero,
                 'telefono' => $request->telefono,
-                'foto' => $request->foto ?? '',
+                'foto' => $fotoPath,
                 'id_municipio' => $request->id_municipio,
                 'descripcion' => $request->descripcion ?? '',
                 'ubicacion_activa' => $request->ubicacion_activa ?? false,
@@ -130,7 +154,8 @@ class RegistroController extends Controller
             return response()->json([
                 'message' => 'Usuario registrado exitosamente',
                 'usuario' => $usuario,
-                'perfil' => $perfil
+                'perfil' => $perfil,
+                'foto_url' => $fotoPath ? asset('storage/' . $fotoPath) : null
             ], 201);
             
         } catch (\Exception $e) {

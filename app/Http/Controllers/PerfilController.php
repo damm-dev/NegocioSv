@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Usuario;
 use App\Models\Perfil;
 use App\Models\Interes;
+use App\Models\Negocio;
 
 use Illuminate\Support\Facades\Auth;
 
@@ -28,6 +29,12 @@ class PerfilController extends Controller
             ], 404);
         }
 
+        // Construir URL completa de la foto si existe
+        $fotoUrl = null;
+        if ($usuario->perfil && $usuario->perfil->foto) {
+            $fotoUrl = url('storage/' . $usuario->perfil->foto);
+        }
+
         return response()->json([
             'usuario' => [
                 'id' => $usuario->id_usuario,
@@ -35,9 +42,66 @@ class PerfilController extends Controller
                 'estado' => $usuario->estado->nombre ?? null,
             ],
             'perfil' => $usuario->perfil,
+            'foto_url' => $fotoUrl,
             'municipio' => $usuario->perfil->municipio->nombre ?? null,
             'departamento' => $usuario->perfil->municipio->departamento->nombre ?? null,
             'intereses' => $usuario->intereses->pluck('categoria.nombre'),
+            'type' => 'persona'
+        ], 200);
+    }
+
+    public function verPerfilNegocio(Request $request)
+    {
+        $usuario = Auth::user(); // Usuario autenticado
+
+        // Buscar el negocio asociado a este usuario
+        $negocio = Negocio::with([
+            'municipio.departamento',
+            'categorias',
+            'metodosPago'
+        ])->where('id_usuario', $usuario->id_usuario)->first();
+
+        if (!$negocio) {
+            return response()->json([
+                'message' => 'Negocio no encontrado'
+            ], 404);
+        }
+
+        // Construir URL completa del logo si existe
+        $logoUrl = null;
+        if ($negocio->logo) {
+            // Si el logo ya es una URL completa, usarla directamente
+            if (filter_var($negocio->logo, FILTER_VALIDATE_URL)) {
+                $logoUrl = $negocio->logo;
+            } else {
+                // Si es una ruta relativa, construir la URL completa
+                $logoUrl = url('storage/' . $negocio->logo);
+            }
+        }
+
+        return response()->json([
+            'usuario' => [
+                'id' => $usuario->id_usuario,
+                'email' => $usuario->email,
+                'estado' => $usuario->estado->nombre ?? null,
+            ],
+            'negocio' => [
+                'id' => $negocio->id_negocio,
+                'nombre' => $negocio->nombre,
+                'descripcion' => $negocio->descripcion,
+                'direccion' => $negocio->direccion,
+                'telefono' => $negocio->telefono,
+                'email_contacto' => $negocio->email_contacto,
+                'logo' => $negocio->logo,
+                'estado_verificacion' => $negocio->estado_verificacion,
+                'id_municipio' => $negocio->id_municipio,
+            ],
+            'logo_url' => $logoUrl,
+            'municipio' => $negocio->municipio->nombre ?? null,
+            'departamento' => $negocio->municipio->departamento->nombre ?? null,
+            'categorias' => $negocio->categorias->pluck('nombre'),
+            'metodos_pago' => $negocio->metodosPago->pluck('nombre'),
+            'type' => 'negocio'
         ], 200);
     }
 

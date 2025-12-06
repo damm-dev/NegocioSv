@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Negocio;
 use App\Models\Usuario;
+use App\Models\Perfil;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,11 @@ class NegocioController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'id_estado_usuario' => 1, // Estado activo por defecto
+            ]);
+            Perfil::create([
+                'id_usuario' => $usuario->id_usuario,
+                'nombres'    => 'Usuario', // Valor por defecto
+                'apellidos'  => 'Negocio', // Valor por defecto
             ]);
 
             // B. Subir el logoFile si existe

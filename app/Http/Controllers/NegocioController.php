@@ -126,11 +126,15 @@ class NegocioController extends Controller
     function detalleNegocio($id)
     {
         try {
-            // Usamos 'with' para traer los datos relacionados
-            $negocio = Negocio::with(['municipio', 'categorias', 'metodosPago', 'usuario'])
-                ->find($id);
+            // Agregamos 'resenas.usuario' para traer las reseñas y QUIÉN las escribió (para mostrar nombre/foto en el front)
+            $negocio = Negocio::with([
+                'municipio', 
+                'categorias', 
+                'metodosPago', 
+                'usuario', 
+                'resenas.usuario' // Trae las reseñas y los datos del usuario que reseñó
+            ])->find($id);
 
-            // Si no existe, devolvemos error 404
             if (!$negocio) {
                 return response()->json([
                     'status' => false,
@@ -138,9 +142,28 @@ class NegocioController extends Controller
                 ], 404);
             }
 
+            // Lógica para saber si el usuario logueado ya hizo una reseña
+            $usuarioYaReseno = false;
+            
+            // Verificamos si hay alguien logueado con Sanctum
+            if (Auth::guard('sanctum')->check()) {
+                $usuarioId = Auth::guard('sanctum')->id();
+                
+                // Buscamos en la colección de reseñas que ya trajimos si alguna pertenece a este usuario
+                $usuarioYaReseno = $negocio->resenas->contains('id_usuario', $usuarioId);
+            }
+
+            // Calculamos el promedio de calificación manualmente
+            $promedio = $negocio->resenas->avg('calificacion');
+
             return response()->json([
                 'status' => true,
-                'data' => $negocio
+                'data' => $negocio,
+                'meta' => [
+                    'promedio_calificacion' => round($promedio, 1), 
+                    'total_resenas' => $negocio->resenas->count(),
+                    'usuario_actual_ya_reseno' => $usuarioYaReseno // <--- Esto le sirve al Front para ocultar/mostrar el formulario
+                ]
             ], 200);
 
         } catch (\Exception $e) {

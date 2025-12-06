@@ -163,40 +163,77 @@ class NegocioController extends Controller
         }
     }
 
-    public function listarNegocios()
+    function listarNegocios()
     {
         try {
-            $negocios = Negocio::with(['municipio', 'categorias', 'metodosPago'])
-                ->where('estado_verificacion', true)
-                ->get();
+            // Traemos los negocios con su Municipio y sus Categorías
+            // paginate(10) para no mostrar muchos negocios a la vez
+            $negocios = Negocio::with(['municipio', 'categorias'])
+                ->withAvg('resenas', 'calificacion') // Calificación promedio
+                ->orderBy('created_at', 'desc') // Los más nuevos primero
+                ->paginate(10);
 
             return response()->json([
-                'success' => true,
+                'status' => true,
                 'data' => $negocios
-            ]);
+            ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener negocios: ' . $e->getMessage()
+                'status' => false,
+                'message' => 'Error al obtener los negocios: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    public function detalleNegocio($id)
+    function detalleNegocio($id)
     {
         try {
-            $negocio = Negocio::with(['municipio', 'categorias', 'metodosPago'])
-                ->findOrFail($id);
+            // Agregamos 'resenas.usuario' para traer las reseñas y QUIÉN las escribió (para mostrar nombre/foto en el front)
+            $negocio = Negocio::with([
+                'municipio', 
+                'categorias', 
+                'metodosPago', 
+                'usuario', 
+                'resenas.usuario' // Trae las reseñas y los datos del usuario que reseñó
+            ])->find($id);
+
+            if (!$negocio) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Negocio no encontrado'
+                ], 404);
+            }
+
+            // Lógica para saber si el usuario logueado ya hizo una reseña
+            $usuarioYaReseno = false;
+            
+            // Verificamos si hay alguien logueado con Sanctum
+            if (Auth::guard('sanctum')->check()) {
+                $usuarioId = Auth::guard('sanctum')->id();
+                
+                // Buscamos en la colección de reseñas que ya trajimos si alguna pertenece a este usuario
+                $usuarioYaReseno = $negocio->resenas->contains('id_usuario', $usuarioId);
+            }
+
+            // Calculamos el promedio de calificación manualmente
+            $promedio = $negocio->resenas->avg('calificacion');
 
             return response()->json([
-                'success' => true,
-                'data' => $negocio
-            ]);
+                'status' => true,
+                'data' => $negocio,
+                'meta' => [
+                    'promedio_calificacion' => round($promedio, 1), 
+                    'total_resenas' => $negocio->resenas->count(),
+                    'usuario_actual_ya_reseno' => $usuarioYaReseno // <--- Esto le sirve al Front para ocultar/mostrar el formulario
+                ]
+            ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
-                'message' => 'Negocio no encontrado'
-            ], 404);
+                'status' => false,
+                'message' => 'Error del servidor: ' . $e->getMessage()
+            ], 500);
         }
     }
 

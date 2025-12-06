@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RegistroController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\NegocioController;
+use App\Http\Contollers\ResenaController;
 
 Route::get('/ping', function () {
     return response()->json([
@@ -29,6 +30,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cerrar sesión / Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    //crear reseña
+    Route::post('/negocio/{id}/resena', [ResenaController::class, 'store']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {

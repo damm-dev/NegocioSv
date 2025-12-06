@@ -53,4 +53,16 @@ class Negocio extends Model
     {
         return $this->hasMany(Resena::class, 'id_negocio', 'id_negocio');
     }
+
+    // Esto hace que Laravel agregue un campo "logo_url" automático al JSON
+    protected $appends = ['logo_url'];
+
+    // Esta función crea la URL completa automáticamente
+    public function getLogoUrlAttribute()
+    {
+        if ($this->logo) {
+            return asset('storage/' . $this->logo);
+        }
+        return null; // O una imagen por defecto
+    }
 }

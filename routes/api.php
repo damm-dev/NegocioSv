@@ -6,6 +6,7 @@ use App\Http\Controllers\RegistroController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\NegocioController;
 use App\Http\Controllers\MunicipioController;
+use App\Http\Controllers\ResenasController;
 
 Route::get('/ping', function () {
     return response()->json([
@@ -24,6 +25,8 @@ Route::get('/negocio/{id}', [NegocioController::class, 'detalleNegocio']);
 Route::get('/municipios', [MunicipioController::class, 'index']);
 Route::get('/departamentos', [MunicipioController::class, 'departamentos']);
 Route::get('/municipios/departamento/{id}', [MunicipioController::class, 'porDepartamento']);
+
+Route::get('/negocio/{id}/resenas', [ResenasController::class, 'index']);
 
 // Rutas para obtener categorías y métodos de pago
 Route::get('/categorias', function() {
@@ -74,11 +77,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Eliminar negocio
     Route::delete('/negocio/{id}', [NegocioController::class, 'eliminarNegocio']);
     //crear reseña
-    Route::post('/negocio/{id}/resena', [ResenaController::class, 'store']);
+    Route::post('/negocio/{id}/resena', [ResenasController::class, 'store']);
     //editar reseña
-    Route::put('/resena/{id}', [ResenaController::class, 'editar']);
+    Route::put('/resena/{id}', [ResenasController::class, 'editar']);
     //eliminar reseña
-    Route::delete('/resena/{id}', [ResenaController::class, 'eliminar']);
+    Route::delete('/resena/{id}', [ResenasController::class, 'eliminar']);
 });
 
 // ==================== RUTAS DE ADMINISTRADOR ====================

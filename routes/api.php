@@ -75,6 +75,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/negocio/{id}', [NegocioController::class, 'eliminarNegocio']);
     //crear reseña
     Route::post('/negocio/{id}/resena', [ResenaController::class, 'store']);
+    //editar reseña
+    Route::put('/resena/{id}', [ResenaController::class, 'editar']);
+    //eliminar reseña
+    Route::delete('/resena/{id}', [ResenaController::class, 'eliminar']);
 });
 
 // ==================== RUTAS DE ADMINISTRADOR ====================

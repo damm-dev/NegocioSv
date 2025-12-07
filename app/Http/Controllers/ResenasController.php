@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ResenasController extends Controller
 {
+    //funcion para crear una reseña
     public function store(Request $request)
     {
         // Validar la entrada
@@ -48,6 +49,82 @@ class ResenasController extends Controller
                 'message' => '¡Reseña publicada con éxito!',
                 'data' => $resena
             ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+    //funcion para editar una reseña
+    public function editar(Request $request, $id)
+    {
+        // Buscar la reseña por ID
+        $resena = Resena::find($id);
+
+        if (!$resena) {
+            return response()->json(['status' => false, 'message' => 'Reseña no encontrada'], 404);
+        }
+
+        //Verificar si el usuario logueado es el dueño de la reseña
+        if ($resena->id_usuario !== Auth::id()) {
+            return response()->json([
+                'status' => false, 
+                'message' => 'No tienes permiso para editar esta reseña.'
+            ], 403); // 403 Forbidden
+        }
+
+        // Validar solo los campos editables (Comentario y Calificación)
+        $validator = Validator::make($request->all(), [
+            'comentario'   => 'required|string|min:10|max:500',
+            'calificacion' => 'required|integer|min:1|max:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            // Actualizamos
+            $resena->update([
+                'comentario'   => $request->comentario,
+                'calificacion' => $request->calificacion,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Reseña actualizada correctamente.',
+                'data' => $resena
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+    //funcion para eliminar una reseña
+    public function eliminar($id)
+    {
+        //Buscamos la reseña
+        $resena = Resena::find($id);
+        //si no existe
+        if (!$resena) {
+            return response()->json(['status' => false, 'message' => 'Reseña no encontrada'], 404);
+        }
+
+        //Verificamos si el usuario logueado es el dueño
+        if ($resena->id_usuario !== Auth::id()) {
+            return response()->json([
+                'status' => false, 
+                'message' => 'No tienes permiso para eliminar esta reseña.'
+            ], 403);
+        }
+
+        try {
+            //Eliminamos la reseña
+            $resena->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Reseña eliminada correctamente.'
+            ], 200);
 
         } catch (\Exception $e) {
             return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);

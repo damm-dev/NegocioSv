@@ -49,6 +49,7 @@ class AuthController extends Controller
             'telefono' => $negocio->telefono,
             'email_contacto' => $negocio->email_contacto,
             'logo' => $negocio->logo,
+            'logo_url' => $negocio->logo_url, // URL completa del logo
             'estado_verificacion' => $negocio->estado_verificacion,
         ];
     } elseif ($perfil) {
@@ -61,6 +62,7 @@ class AuthController extends Controller
             'genero' => $perfil->genero,
             'telefono' => $perfil->telefono,
             'foto' => $perfil->foto,
+            'foto_url' => $perfil->foto_url, // URL completa de la foto
             'id_municipio' => $perfil->id_municipio,
             'descripcion' => $perfil->descripcion,
             'ubicacion_activa' => $perfil->ubicacion_activa,

@@ -94,6 +94,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/negocio/{id}/foto', [NegocioController::class, 'subirFoto']);
     // Eliminar foto del negocio
     Route::delete('/negocio/{id}/foto/{idFoto}', [NegocioController::class, 'eliminarFoto']);
+    // Estadísticas del dashboard del negocio
+    Route::get('/dashboard/estadisticas', [NegocioController::class, 'estadisticasDashboard']);
     
     // ========== RESEÑAS ==========
     // Crear reseña

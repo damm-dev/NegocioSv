@@ -411,7 +411,8 @@ class NegocioController extends Controller
             $negocio = Negocio::findOrFail($id);
             
             // Verificar que el usuario autenticado sea el dueño
-            if ($negocio->id_usuario !== Auth::id()) {
+            $usuarioId = Auth::id();
+            if ((int)$negocio->id_usuario !== (int)$usuarioId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes permiso para editar este negocio'
@@ -419,7 +420,8 @@ class NegocioController extends Controller
             }
 
             // Verificar que no tenga más de 4 fotos
-            if ($negocio->fotos()->count() >= 4) {
+            $fotosActuales = $negocio->fotos()->count();
+            if ($fotosActuales >= 4) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Ya tienes el máximo de 4 fotos'
@@ -427,9 +429,14 @@ class NegocioController extends Controller
             }
 
             $request->validate([
-                'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'foto' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB máximo
                 'orden' => 'required|integer|min:1|max:4',
                 'descripcion' => 'nullable|string|max:255'
+            ], [
+                'foto.required' => 'Debes seleccionar una imagen',
+                'foto.image' => 'El archivo debe ser una imagen',
+                'foto.mimes' => 'Formato no soportado. Usa JPG, PNG, GIF o WebP',
+                'foto.max' => 'La imagen es muy grande. Máximo 5MB',
             ]);
 
             // Guardar la foto
@@ -450,6 +457,12 @@ class NegocioController extends Controller
                 'foto' => $foto
             ], 201);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->errors()['foto'][0] ?? 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -474,7 +487,8 @@ class NegocioController extends Controller
                 ], 403);
             }
 
-            $foto = $negocio->fotos()->findOrFail($idFoto);
+            // Buscar la foto por su id_foto
+            $foto = $negocio->fotos()->where('id_foto', $idFoto)->firstOrFail();
 
             // Eliminar archivo físico
             if (Storage::disk('public')->exists($foto->ruta_foto)) {
@@ -492,6 +506,95 @@ class NegocioController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al eliminar foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener estadísticas del dashboard del negocio
+     */
+    public function estadisticasDashboard(Request $request)
+    {
+        try {
+            $usuario = Auth::user();
+            
+            // Obtener el negocio del usuario autenticado
+            $negocio = Negocio::where('id_usuario', $usuario->id_usuario)->first();
+            
+            if (!$negocio) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Negocio no encontrado'
+                ], 404);
+            }
+
+            // Obtener estadísticas
+            $totalResenas = $negocio->resenas()->count();
+            $promedioCalificacion = $negocio->resenas()->avg('calificacion') ?? 0;
+            $totalFavoritos = $negocio->usuariosFavoritos()->count();
+            $totalSeguidores = $negocio->seguidores()->count();
+            
+            // Reseñas de hoy
+            $resenasHoy = $negocio->resenas()
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+            
+            // Nuevos seguidores esta semana
+            $nuevosSeguidoresSemana = $negocio->seguidores()
+                ->wherePivot('created_at', '>=', now()->subDays(7))
+                ->count();
+            
+            // Nuevos favoritos esta semana
+            $nuevosFavoritosSemana = $negocio->usuariosFavoritos()
+                ->wherePivot('created_at', '>=', now()->subDays(7))
+                ->count();
+
+            // Obtener las últimas 5 reseñas como actividad reciente
+            $ultimasResenas = $negocio->resenas()
+                ->with('usuario.perfil')
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function ($resena) {
+                    $nombreUsuario = 'Usuario';
+                    if ($resena->usuario && $resena->usuario->perfil) {
+                        $nombreUsuario = $resena->usuario->perfil->nombres . ' ' . $resena->usuario->perfil->apellidos;
+                    }
+                    return [
+                        'tipo' => 'resena',
+                        'icono' => '⭐',
+                        'texto' => "Nueva reseña de {$resena->calificacion} estrellas de {$nombreUsuario}",
+                        'tiempo' => $resena->created_at->diffForHumans(),
+                        'fecha' => $resena->created_at
+                    ];
+                });
+
+            // Combinar actividad (por ahora solo reseñas, se pueden agregar más tipos)
+            $actividad = $ultimasResenas->take(5);
+
+            return response()->json([
+                'success' => true,
+                'estadisticas' => [
+                    'total_resenas' => $totalResenas,
+                    'promedio_calificacion' => round($promedioCalificacion, 1),
+                    'total_favoritos' => $totalFavoritos,
+                    'total_seguidores' => $totalSeguidores,
+                    'resenas_hoy' => $resenasHoy,
+                    'nuevos_seguidores_semana' => $nuevosSeguidoresSemana,
+                    'nuevos_favoritos_semana' => $nuevosFavoritosSemana,
+                ],
+                'actividad_reciente' => $actividad,
+                'negocio' => [
+                    'id' => $negocio->id_negocio,
+                    'nombre' => $negocio->nombre,
+                    'estado_verificacion' => $negocio->estado_verificacion
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener estadísticas: ' . $e->getMessage()
             ], 500);
         }
     }

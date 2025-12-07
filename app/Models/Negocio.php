@@ -59,7 +59,7 @@ class Negocio extends Model
     // Relación: Un negocio tiene muchas fotos adicionales
     public function fotos()
     {
-        return $this->hasMany(FotoNegocio::class, 'id_negocio')->orderBy('orden');
+        return $this->hasMany(FotoNegocio::class, 'id_negocio', 'id_negocio')->orderBy('orden');
     }
 
     // Relación: Un negocio tiene muchas promociones

@@ -31,4 +31,16 @@ class Perfil extends Model
     {
         return $this->belongsTo(Municipio::class, 'id_municipio');
     }
+
+    // Agregar foto_url al JSON automáticamente
+    protected $appends = ['foto_url'];
+
+    // Accessor para obtener la URL completa de la foto
+    public function getFotoUrlAttribute()
+    {
+        if ($this->foto) {
+            return asset('storage/' . $this->foto);
+        }
+        return null;
+    }
 }

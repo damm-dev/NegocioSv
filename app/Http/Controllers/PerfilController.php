@@ -54,11 +54,12 @@ class PerfilController extends Controller
     {
         $usuario = Auth::user(); // Usuario autenticado
 
-        // Buscar el negocio asociado a este usuario
+        // Buscar el negocio asociado a este usuario con fotos incluidas
         $negocio = Negocio::with([
             'municipio.departamento',
             'categorias',
-            'metodosPago'
+            'metodosPago',
+            'fotos' // Incluir fotos adicionales
         ])->where('id_usuario', $usuario->id_usuario)->first();
 
         if (!$negocio) {
@@ -79,6 +80,16 @@ class PerfilController extends Controller
             }
         }
 
+        // Procesar fotos para el frontend
+        $fotosFormateadas = $negocio->fotos->map(function ($foto) {
+            return [
+                'id' => $foto->id_foto,
+                'url' => $foto->foto_url,
+                'orden' => $foto->orden,
+                'descripcion' => $foto->descripcion
+            ];
+        });
+
         return response()->json([
             'usuario' => [
                 'id' => $usuario->id_usuario,
@@ -93,8 +104,10 @@ class PerfilController extends Controller
                 'telefono' => $negocio->telefono,
                 'email_contacto' => $negocio->email_contacto,
                 'logo' => $negocio->logo,
+                'logo_url' => $logoUrl, // URL del logo dentro del objeto negocio
                 'estado_verificacion' => $negocio->estado_verificacion,
                 'id_municipio' => $negocio->id_municipio,
+                'fotos' => $fotosFormateadas, // Fotos adicionales del negocio
             ],
             'logo_url' => $logoUrl,
             'municipio' => $negocio->municipio->nombre ?? null,

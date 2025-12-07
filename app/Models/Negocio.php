@@ -56,6 +56,44 @@ class Negocio extends Model
         return $this->hasMany(Resena::class, 'id_negocio', 'id_negocio');
     }
 
+    // Relación: Un negocio tiene muchas fotos adicionales
+    public function fotos()
+    {
+        return $this->hasMany(FotoNegocio::class, 'id_negocio')->orderBy('orden');
+    }
+
+    // Relación: Un negocio tiene muchas promociones
+    public function promociones()
+    {
+        return $this->hasMany(Promocion::class, 'id_negocio');
+    }
+
+    // Relación: Promociones vigentes
+    public function promocionesVigentes()
+    {
+        return $this->hasMany(Promocion::class, 'id_negocio')->vigentes();
+    }
+
+    // Relación: Usuarios que tienen este negocio como favorito
+    public function usuariosFavoritos()
+    {
+        return $this->belongsToMany(Usuario::class, 'favoritos', 'id_negocio', 'id_usuario')
+            ->withTimestamps();
+    }
+
+    // Relación: Usuarios que siguen este negocio
+    public function seguidores()
+    {
+        return $this->belongsToMany(Usuario::class, 'seguimientos', 'id_negocio', 'id_usuario')
+            ->withTimestamps();
+    }
+
+    // Relación: Recomendaciones de este negocio
+    public function recomendaciones()
+    {
+        return $this->hasMany(Recomendacion::class, 'id_negocio');
+    }
+
     // Esto hace que Laravel agregue un campo "logo_url" automático al JSON
     protected $appends = ['logo_url'];
 

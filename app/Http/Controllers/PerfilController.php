@@ -7,9 +7,9 @@ use App\Models\Usuario;
 use App\Models\Perfil;
 use App\Models\Interes;
 use App\Models\Negocio;
-
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PerfilController extends Controller
 {
@@ -108,7 +108,7 @@ class PerfilController extends Controller
     //  2. ACTUALIZAR PERFIL
     public function actualizarPerfil(Request $request)
     {
-        $usuario = Auth::user();; // Usuario autenticado
+        $usuario = Auth::user(); // Usuario autenticado
 
         $perfil = Perfil::where('id_usuario', $usuario->id_usuario)->first();
 
@@ -151,6 +151,78 @@ class PerfilController extends Controller
         return response()->json([
             'message' => 'Perfil actualizado correctamente',
             'perfil' => $perfil
+        ], 200);
+    }
+
+    /**
+     * Subir foto de perfil (persona)
+     */
+    public function subirFoto(Request $request)
+    {
+        $usuario = Auth::user();
+
+        $request->validate([
+            'foto' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        $perfil = Perfil::where('id_usuario', $usuario->id_usuario)->first();
+
+        if (!$perfil) {
+            return response()->json(['message' => 'Perfil no encontrado'], 404);
+        }
+
+        // Eliminar foto anterior si existe
+        if ($perfil->foto && Storage::disk('public')->exists($perfil->foto)) {
+            Storage::disk('public')->delete($perfil->foto);
+        }
+
+        // Guardar nueva foto
+        $file = $request->file('foto');
+        $filename = 'perfil_' . $usuario->id_usuario . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('perfiles', $filename, 'public');
+
+        $perfil->foto = $path;
+        $perfil->save();
+
+        return response()->json([
+            'message' => 'Foto de perfil actualizada correctamente',
+            'foto_url' => url('storage/' . $path)
+        ], 200);
+    }
+
+    /**
+     * Subir logo del negocio
+     */
+    public function subirLogo(Request $request)
+    {
+        $usuario = Auth::user();
+
+        $request->validate([
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+        ]);
+
+        $negocio = Negocio::where('id_usuario', $usuario->id_usuario)->first();
+
+        if (!$negocio) {
+            return response()->json(['message' => 'Negocio no encontrado'], 404);
+        }
+
+        // Eliminar logo anterior si existe
+        if ($negocio->logo && Storage::disk('public')->exists($negocio->logo)) {
+            Storage::disk('public')->delete($negocio->logo);
+        }
+
+        // Guardar nuevo logo
+        $file = $request->file('logo');
+        $filename = 'logo_' . $negocio->id_negocio . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('logos', $filename, 'public');
+
+        $negocio->logo = $path;
+        $negocio->save();
+
+        return response()->json([
+            'message' => 'Logo actualizado correctamente',
+            'logo_url' => url('storage/' . $path)
         ], 200);
     }
 

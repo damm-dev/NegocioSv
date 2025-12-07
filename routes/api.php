@@ -7,6 +7,11 @@ use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\NegocioController;
 use App\Http\Controllers\MunicipioController;
 use App\Http\Controllers\ResenasController;
+use App\Http\Controllers\LogroController;
+use App\Http\Controllers\FavoritoController;
+use App\Http\Controllers\SeguimientoController;
+use App\Http\Controllers\PromocionController;
+use App\Http\Controllers\AdminController;
 
 Route::get('/ping', function () {
     return response()->json([
@@ -64,28 +69,90 @@ Route::get('/metodos-pago', function() {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    // ========== PERFIL ==========
     // Ver perfil (persona)
     Route::get('/perfil', [PerfilController::class, 'verPerfil']);
     // Ver perfil (negocio)
     Route::get('/perfil/negocio', [PerfilController::class, 'verPerfilNegocio']);
     // Actualizar perfil
     Route::put('/perfil', [PerfilController::class, 'actualizarPerfil']);
+    // Subir foto de perfil (persona)
+    Route::post('/perfil/foto', [PerfilController::class, 'subirFoto']);
+    // Subir logo (negocio)
+    Route::post('/perfil/logo', [PerfilController::class, 'subirLogo']);
+    
+    // ========== AUTENTICACIÓN ==========
     // Cerrar sesión / Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+    
+    // ========== NEGOCIOS ==========
     // Editar negocio
     Route::put('/negocio/{id}', [NegocioController::class, 'actualizarNegocio']);
     // Eliminar negocio
     Route::delete('/negocio/{id}', [NegocioController::class, 'eliminarNegocio']);
-    //crear reseña
+    // Subir fotos adicionales del negocio
+    Route::post('/negocio/{id}/foto', [NegocioController::class, 'subirFoto']);
+    // Eliminar foto del negocio
+    Route::delete('/negocio/{id}/foto/{idFoto}', [NegocioController::class, 'eliminarFoto']);
+    
+    // ========== RESEÑAS ==========
+    // Crear reseña
     Route::post('/negocio/{id}/resena', [ResenasController::class, 'store']);
-    //editar reseña
+    // Editar reseña
     Route::put('/resena/{id}', [ResenasController::class, 'editar']);
-    //eliminar reseña
+    // Eliminar reseña
     Route::delete('/resena/{id}', [ResenasController::class, 'eliminar']);
+    
+    // ========== LOGROS ==========
+    // Obtener logros del usuario con progreso
+    Route::get('/logros', [LogroController::class, 'index']);
+    // Verificar y actualizar logros
+    Route::post('/logros/verificar', [LogroController::class, 'verificarLogros']);
+    
+    // ========== FAVORITOS ==========
+    // Listar favoritos del usuario
+    Route::get('/favoritos', [FavoritoController::class, 'index']);
+    // Agregar a favoritos
+    Route::post('/favoritos', [FavoritoController::class, 'store']);
+    // Eliminar de favoritos
+    Route::delete('/favoritos/{idNegocio}', [FavoritoController::class, 'destroy']);
+    // Verificar si es favorito
+    Route::get('/favoritos/verificar/{idNegocio}', [FavoritoController::class, 'verificar']);
+    
+    // ========== SEGUIMIENTOS ==========
+    // Listar negocios seguidos
+    Route::get('/seguimientos', [SeguimientoController::class, 'index']);
+    // Seguir un negocio
+    Route::post('/seguimientos', [SeguimientoController::class, 'store']);
+    // Dejar de seguir
+    Route::delete('/seguimientos/{idNegocio}', [SeguimientoController::class, 'destroy']);
+    // Verificar si sigue un negocio
+    Route::get('/seguimientos/verificar/{idNegocio}', [SeguimientoController::class, 'verificar']);
+    
+    // ========== PROMOCIONES ==========
+    // Obtener promociones del negocio del usuario
+    Route::get('/promociones', [PromocionController::class, 'misPromociones']);
+    // Crear promoción
+    Route::post('/promociones', [PromocionController::class, 'store']);
+    // Actualizar promoción
+    Route::put('/promociones/{id}', [PromocionController::class, 'update']);
+    // Eliminar promoción
+    Route::delete('/promociones/{id}', [PromocionController::class, 'destroy']);
+    // Activar/Desactivar promoción
+    Route::patch('/promociones/{id}/toggle', [PromocionController::class, 'toggleActiva']);
 });
 
+// ========== RUTAS PÚBLICAS DE PROMOCIONES ==========
+// Obtener promociones vigentes de un negocio
+Route::get('/negocio/{idNegocio}/promociones', [PromocionController::class, 'vigentes']);
+// Obtener todas las promociones de un negocio
+Route::get('/negocio/{idNegocio}/promociones/todas', [PromocionController::class, 'index']);
+
+// ========== ESTADÍSTICAS PÚBLICAS ==========
+// Estadísticas de seguidores de un negocio
+Route::get('/negocio/{idNegocio}/seguidores', [SeguimientoController::class, 'estadisticasNegocio']);
+
 // ==================== RUTAS DE ADMINISTRADOR ====================
-use App\Http\Controllers\AdminController;
 
 // Login de administrador (sin autenticación)
 Route::post('/admin/login', [AdminController::class, 'login']);

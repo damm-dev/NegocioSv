@@ -174,7 +174,7 @@ class NegocioController extends Controller
             $radius = $request->input('radius', 50); // Radio en km (por defecto 50km)
 
             // Query base
-            $negociosQuery = Negocio::with(['municipio', 'categorias', 'metodosPago'])
+            $negociosQuery = Negocio::with(['municipio', 'categorias', 'metodosPago', 'promocionesVigentes'])
                 ->withAvg('resenas', 'calificacion')
                 ->withCount('resenas');
 
@@ -281,13 +281,15 @@ class NegocioController extends Controller
     function detalleNegocio($id)
     {
         try {
-            // Agregamos 'resenas.usuario' para traer las reseñas y QUIÉN las escribió (para mostrar nombre/foto en el front)
+            // Agregamos 'resenas.usuario', 'fotos' y 'promocionesVigentes'
             $negocio = Negocio::with([
                 'municipio', 
                 'categorias', 
                 'metodosPago', 
                 'usuario', 
-                'resenas.usuario' // Trae las reseñas y los datos del usuario que reseñó
+                'resenas.usuario',
+                'fotos', // Fotos adicionales del negocio
+                'promocionesVigentes' // Solo promociones activas y vigentes
             ])->find($id);
 
             if (!$negocio) {
@@ -299,6 +301,8 @@ class NegocioController extends Controller
 
             // Lógica para saber si el usuario logueado ya hizo una reseña
             $usuarioYaReseno = false;
+            $esFavorito = false;
+            $siguiendo = false;
             
             // Verificamos si hay alguien logueado con Sanctum
             if (Auth::guard('sanctum')->check()) {
@@ -306,10 +310,20 @@ class NegocioController extends Controller
                 
                 // Buscamos en la colección de reseñas que ya trajimos si alguna pertenece a este usuario
                 $usuarioYaReseno = $negocio->resenas->contains('id_usuario', $usuarioId);
+                
+                // Verificar si es favorito
+                $esFavorito = $negocio->usuariosFavoritos()->where('id_usuario', $usuarioId)->exists();
+                
+                // Verificar si lo sigue
+                $siguiendo = $negocio->seguidores()->where('id_usuario', $usuarioId)->exists();
             }
 
             // Calculamos el promedio de calificación manualmente
             $promedio = $negocio->resenas->avg('calificacion');
+            
+            // Contar seguidores y favoritos
+            $totalSeguidores = $negocio->seguidores()->count();
+            $totalFavoritos = $negocio->usuariosFavoritos()->count();
 
             return response()->json([
                 'status' => true,
@@ -317,7 +331,11 @@ class NegocioController extends Controller
                 'meta' => [
                     'promedio_calificacion' => round($promedio, 1), 
                     'total_resenas' => $negocio->resenas->count(),
-                    'usuario_actual_ya_reseno' => $usuarioYaReseno // <--- Esto le sirve al Front para ocultar/mostrar el formulario
+                    'usuario_actual_ya_reseno' => $usuarioYaReseno,
+                    'es_favorito' => $esFavorito,
+                    'siguiendo' => $siguiendo,
+                    'total_seguidores' => $totalSeguidores,
+                    'total_favoritos' => $totalFavoritos
                 ]
             ], 200);
 
@@ -380,6 +398,100 @@ class NegocioController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al eliminar negocio: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Subir fotos adicionales del negocio (máximo 4)
+     */
+    public function subirFoto(Request $request, $id)
+    {
+        try {
+            $negocio = Negocio::findOrFail($id);
+            
+            // Verificar que el usuario autenticado sea el dueño
+            if ($negocio->id_usuario !== Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para editar este negocio'
+                ], 403);
+            }
+
+            // Verificar que no tenga más de 4 fotos
+            if ($negocio->fotos()->count() >= 4) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya tienes el máximo de 4 fotos'
+                ], 400);
+            }
+
+            $request->validate([
+                'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'orden' => 'required|integer|min:1|max:4',
+                'descripcion' => 'nullable|string|max:255'
+            ]);
+
+            // Guardar la foto
+            $file = $request->file('foto');
+            $filename = 'negocio_' . $id . '_foto_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('negocios/fotos', $filename, 'public');
+
+            // Crear registro en la base de datos
+            $foto = $negocio->fotos()->create([
+                'ruta_foto' => $path,
+                'orden' => $request->orden,
+                'descripcion' => $request->descripcion
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto subida correctamente',
+                'foto' => $foto
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al subir foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Eliminar una foto del negocio
+     */
+    public function eliminarFoto($id, $idFoto)
+    {
+        try {
+            $negocio = Negocio::findOrFail($id);
+            
+            // Verificar que el usuario autenticado sea el dueño
+            if ($negocio->id_usuario !== Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para editar este negocio'
+                ], 403);
+            }
+
+            $foto = $negocio->fotos()->findOrFail($idFoto);
+
+            // Eliminar archivo físico
+            if (Storage::disk('public')->exists($foto->ruta_foto)) {
+                Storage::disk('public')->delete($foto->ruta_foto);
+            }
+
+            $foto->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto eliminada correctamente'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar foto: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -163,19 +163,111 @@ class NegocioController extends Controller
         }
     }
 
-    function listarNegocios()
+    function listarNegocios(Request $request)
     {
         try {
-            // Traemos los negocios con su Municipio y sus Categorías
-            // paginate(10) para no mostrar muchos negocios a la vez
-            $negocios = Negocio::with(['municipio', 'categorias'])
-                ->withAvg('resenas', 'calificacion') // Calificación promedio
-                ->orderBy('created_at', 'desc') // Los más nuevos primero
-                ->paginate(10);
+            // Parámetros de búsqueda
+            $query = $request->input('query'); // Texto de búsqueda
+            $municipioId = $request->input('municipio'); // ID del municipio
+            $lat = $request->input('lat'); // Latitud del usuario
+            $lng = $request->input('lng'); // Longitud del usuario
+            $radius = $request->input('radius', 50); // Radio en km (por defecto 50km)
+
+            // Query base
+            $negociosQuery = Negocio::with(['municipio', 'categorias', 'metodosPago'])
+                ->withAvg('resenas', 'calificacion')
+                ->withCount('resenas');
+
+            // Filtro por texto (nombre o descripción)
+            if ($query) {
+                $negociosQuery->where(function($q) use ($query) {
+                    $q->where('nombre', 'ILIKE', "%{$query}%")
+                      ->orWhere('descripcion', 'ILIKE', "%{$query}%");
+                });
+            }
+
+            // Filtro por municipio
+            if ($municipioId) {
+                $negociosQuery->where('id_municipio', $municipioId);
+            }
+
+            // Búsqueda por proximidad geográfica
+            if ($lat && $lng) {
+                // Fórmula de Haversine para calcular distancia
+                // Solo incluye negocios que tengan coordenadas
+                $negociosQuery->selectRaw("
+                    negocios.*,
+                    (6371 * acos(
+                        cos(radians(?)) * 
+                        cos(radians(latitud)) * 
+                        cos(radians(longitud) - radians(?)) + 
+                        sin(radians(?)) * 
+                        sin(radians(latitud))
+                    )) AS distancia
+                ", [$lat, $lng, $lat])
+                ->whereNotNull('latitud')
+                ->whereNotNull('longitud')
+                ->having('distancia', '<=', $radius)
+                ->orderBy('distancia', 'asc');
+            } else {
+                // Si no hay geolocalización, ordenar por fecha
+                $negociosQuery->orderBy('created_at', 'desc');
+            }
+
+            // Paginación
+            $negocios = $negociosQuery->paginate(12);
+
+            // Añadir datos estructurados JSON-LD para SEO
+            $structuredData = [
+                '@context' => 'https://schema.org',
+                '@type' => 'ItemList',
+                'numberOfItems' => $negocios->total(),
+                'itemListElement' => []
+            ];
+
+            foreach ($negocios->items() as $index => $negocio) {
+                $structuredData['itemListElement'][] = [
+                    '@type' => 'ListItem',
+                    'position' => $index + 1,
+                    'item' => [
+                        '@type' => 'LocalBusiness',
+                        '@id' => url("/negocio/{$negocio->id_negocio}"),
+                        'name' => $negocio->nombre,
+                        'description' => $negocio->descripcion,
+                        'image' => $negocio->logo ? asset('storage/' . $negocio->logo) : null,
+                        'address' => [
+                            '@type' => 'PostalAddress',
+                            'streetAddress' => $negocio->direccion,
+                            'addressLocality' => $negocio->municipio->nombre ?? '',
+                            'addressCountry' => 'SV'
+                        ],
+                        'telephone' => $negocio->telefono,
+                        'email' => $negocio->email_contacto,
+                        'aggregateRating' => $negocio->resenas_avg_calificacion ? [
+                            '@type' => 'AggregateRating',
+                            'ratingValue' => round($negocio->resenas_avg_calificacion, 1),
+                            'reviewCount' => $negocio->resenas_count,
+                            'bestRating' => 5,
+                            'worstRating' => 1
+                        ] : null,
+                        'geo' => ($negocio->latitud && $negocio->longitud) ? [
+                            '@type' => 'GeoCoordinates',
+                            'latitude' => $negocio->latitud,
+                            'longitude' => $negocio->longitud
+                        ] : null
+                    ]
+                ];
+            }
 
             return response()->json([
                 'status' => true,
-                'data' => $negocios
+                'data' => $negocios,
+                'structuredData' => $structuredData,
+                'filters' => [
+                    'query' => $query,
+                    'municipio' => $municipioId,
+                    'hasLocation' => ($lat && $lng) ? true : false
+                ]
             ], 200);
 
         } catch (\Exception $e) {

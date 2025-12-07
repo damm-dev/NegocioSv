@@ -18,6 +18,8 @@ class Negocio extends Model
         'nombre',
         'descripcion',
         'direccion',
+        'latitud',
+        'longitud',
         'telefono',
         'email_contacto',
         'logo',
